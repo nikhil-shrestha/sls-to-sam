@@ -1,0 +1,113 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: 'SAM template for Serverless framework service: '
+Resources:
+  GreetNamesTable:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: name
+          AttributeType: S
+      KeySchema:
+        - AttributeName: name
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      TableName: GreetNames
+  Hello:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: handler.hello
+      Runtime: nodejs8.10
+      CodeUri: /Users/illusionist/Documents/aws/sls-to-sam/.serverless/sls-to-sam.zip
+      MemorySize: 128
+      Timeout: 3
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - 'dynamodb:GetItem'
+                - 'dynamodb:PutItem'
+              Resource:
+                - 'arn:aws:dynamodb:us-east-1:*:table/GreetNames'
+      Events:
+        Event1:
+          Type: Api
+          Properties:
+            Path: /hello
+            Method: get
+            RestApiId:
+              Ref: SlsToSam
+  SlsToSam:
+    Type: 'AWS::Serverless::Api'
+    Properties:
+      StageName: dev
+      DefinitionBody:
+        swagger: '2.0'
+        info:
+          title:
+            Ref: 'AWS::StackName'
+        paths:
+          /hello:
+            get:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  'Fn::Sub': >-
+                    arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${Hello.Arn}/invocations
+              responses: {}
+          /wasGreeted:
+            get:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  'Fn::Sub': >-
+                    arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${WasGreeted.Arn}/invocations
+              responses: {}
+  HelloLambdaPermission:
+    Type: 'AWS::Lambda::Permission'
+    DependsOn:
+      - Hello
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName:
+        Ref: Hello
+      Principal: apigateway.amazonaws.com
+  WasGreeted:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: handler.wasGreeted
+      Runtime: nodejs8.10
+      CodeUri: /Users/illusionist/Documents/aws/sls-to-sam/.serverless/sls-to-sam.zip
+      MemorySize: 128
+      Timeout: 3
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - 'dynamodb:GetItem'
+                - 'dynamodb:PutItem'
+              Resource:
+                - 'arn:aws:dynamodb:us-east-1:*:table/GreetNames'
+      Events:
+        Event1:
+          Type: Api
+          Properties:
+            Path: /wasGreeted
+            Method: get
+            RestApiId:
+              Ref: SlsToSam
+  WasGreetedLambdaPermission:
+    Type: 'AWS::Lambda::Permission'
+    DependsOn:
+      - WasGreeted
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName:
+        Ref: WasGreeted
+      Principal: apigateway.amazonaws.com

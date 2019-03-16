@@ -19,5 +19,8 @@
   "homepage": "https://github.com/nikhil-shrestha/sls-to-sam#readme",
   "dependencies": {
     "aws-sdk": "^2.422.0"
+  },
+  "devDependencies": {
+    "serverless-sam": "^0.2.0"
   }
 }
